@@ -17,28 +17,30 @@
  */
 package org.magnum.dataup;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.OutputStream;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 import org.magnum.dataup.model.Video;
+import org.magnum.dataup.model.VideoStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.multipart.MultipartFile;
 
 @Controller
-public class AnEmptyController {
+public class VideoSvcCtrl {
 
 	/**
 	 * You will need to create one or more Spring controllers to fulfill the
@@ -64,17 +66,16 @@ public class AnEmptyController {
 
 	private VideoFileManager mVideoFileManager;
 
-	public static final String VIDEO_PATH = "/video";
-	public static final String VIDEO_ID_DATA_PATH = "/video/{id}/data";
+	public static final String DATA_PARAMETER = "data";
+	public static final String ID_PARAMETER = "id";
+	public static final String VIDEO_SVC_PATH = "/video";
+	public static final String VIDEO_DATA_PATH = VIDEO_SVC_PATH + "/{id}/data";
 
 	
-	
-	
-	
-	@RequestMapping(value=VIDEO_PATH, method = RequestMethod.GET)
-	public @ResponseBody Map<Long, Video> getVideos() {
+	@RequestMapping(value=VIDEO_SVC_PATH, method = RequestMethod.GET)
+	public @ResponseBody Collection<Video> getVideoList() {
 
-		return videos;	
+		return videos.values();	
 	}
 
 
@@ -91,16 +92,12 @@ public class AnEmptyController {
 	 * @param video
 	 * @return
 	 */
-	@RequestMapping(value = VIDEO_PATH, method = RequestMethod.POST) 
-	public @ResponseBody Video createVideo(
-			@RequestBody Video video) {
+	@RequestMapping(value = VIDEO_SVC_PATH, method = RequestMethod.POST) 
+	public @ResponseBody Video addVideo(
+			@RequestParam Video v) {
 		
-		if (mVideoFileManager.hasVideoData(video)) {
-			checkAndSetId(video);
-			videos.put(video.getId(), video);
-			return video;
-		}
-		return video;  // The video object will be returned, and Jackson will convert it to proper JSON when the client receives it
+		save(v);
+		return v;
 		
 	}
 	
@@ -117,16 +114,22 @@ public class AnEmptyController {
 	 * @return
 	 * @throws IOException 
 	 */
-	@RequestMapping(value = VIDEO_ID_DATA_PATH, method = RequestMethod.POST) 
-	public @ResponseBody Video uploadVideo(
-			@PathVariable("video") Video video,
-			@PathVariable("data") MultipartFile videoData) 
+	@RequestMapping(value = VIDEO_DATA_PATH, method = RequestMethod.POST) 
+	public @ResponseBody VideoStatus.VideoState setVideoData(
+			@PathVariable(ID_PARAMETER) long id,
+			@RequestBody MultipartFile videoData) 
 			throws IOException {
+		/*
+		Video video = Video.create()
+				.withContentType(v.getContentType())
+				.withTitle(v.getTitle())
+				.withDuration(v.getDuration())
+				.withSubject(v.getSubject()).build();
+		*/
 		
-		checkAndSetId(video);
-		videos.put(video.getId(), video);
-		saveVideoData(video, videoData);
-		return video;
+		saveSomeData(videos.get(id), videoData);
+
+		return VideoStatus.VideoState.READY;  
 	}
 
 	/**
@@ -137,27 +140,44 @@ public class AnEmptyController {
      * then the server should return a 404 status code.
 	 * @param id
 	 * @return video
-	 * @throws FileNotFoundException 
+	 * @throws IOException 
 	 */
-	@RequestMapping(value = VIDEO_ID_DATA_PATH, method = RequestMethod.GET) 
-	public @ResponseBody Video getVideoById(
-			@PathVariable("video") Video video,
-			@PathVariable("data") MultipartFile videoData) throws FileNotFoundException {
+	@RequestMapping(value = VIDEO_DATA_PATH, method = RequestMethod.GET)
+	public void getData(
+			@PathVariable("id") long id,
+			HttpServletResponse response) throws IOException {
 		
+		response.setContentType("video/mpeg");
+		Video video = videos.get(id);
 		
 		if (mVideoFileManager.hasVideoData(video)) {
-			return video;
+			video.setDataUrl(getDataUrl(video.getId()));  // give the video a data URL
+			response.setStatus(response.SC_OK);
+								
 		} else {
-			throw new FileNotFoundException();
+			//throw new FileNotFoundException();
+			response.setStatus(response.SC_NOT_FOUND);
 		}
-			
+		
 	}
 
-	
-	
+		
+		
 	
 	
 	///////////////////////////////////// HELPERS //////////////////////////////////////////
+	
+	
+	/**
+	 * Saving a video to the database
+	 */
+	public Video save(Video v) {
+		checkAndSetId(v);
+		videos.put(v.getId(), v);
+		return v;
+	}
+	
+	
 	
 	/**
 	 * Helper method for when we save a video to the database...
@@ -167,6 +187,26 @@ public class AnEmptyController {
 		if (video.getId() == 0) {
 			video.setId(currentId.incrementAndGet());
 		}
+	}
+	
+	/**
+	 * Save some or part of a videos data when
+	 * we're initially uploading it from MultipartFile data
+	 * @throws IOException 
+	 */
+	public void saveSomeData(Video video, MultipartFile videoData) throws IOException {
+		mVideoFileManager.saveVideoData(video, videoData.getInputStream());
+	}
+	
+	
+	/**
+	 * Serve video to the client through an HttpServletResponse
+	 * @param video
+	 * @param response
+	 * @throws IOException 
+	 */
+	public void serveSomeVideo(Video video, HttpServletResponse response) throws IOException {
+		mVideoFileManager.copyVideoData(video, response.getOutputStream());
 	}
 	
 	
@@ -192,20 +232,6 @@ public class AnEmptyController {
 				+ ((request.getServerPort() != 80) ? ":" + request.getServerPort() : "");
 		return base;
 	}
-	
-	
-	/**
-	 * Saves a video to the file system in the working directory
-	 * by using the VideoManager and exposing the MultipartFile information
-	 * reviceived by the controller
-	 * @throws IOException 
-	 */
-	private void saveVideoData(Video v, MultipartFile videoData) throws IOException {
-		mVideoFileManager.saveVideoData(v, videoData.getInputStream());
-	}
-	
-	
-	
 	
 	
  }
