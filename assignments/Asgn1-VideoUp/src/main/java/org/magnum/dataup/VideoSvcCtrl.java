@@ -17,7 +17,6 @@
  */
 package org.magnum.dataup;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
@@ -29,8 +28,9 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.magnum.dataup.model.Video;
 import org.magnum.dataup.model.VideoStatus;
+import org.magnum.dataup.model.VideoStatus.VideoState;
+import org.springframework.data.rest.webmvc.ResourceNotFoundException;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -67,6 +67,7 @@ public class VideoSvcCtrl {
 	private static AtomicLong currentId = new AtomicLong(0L);
 
 	private VideoFileManager mVideoFileManager;
+	
 
 	public static final String DATA_PARAMETER = "data";
 	public static final String ID_PARAMETER = "id";
@@ -103,6 +104,7 @@ public class VideoSvcCtrl {
 
 		try {
 			save(v);
+			v.setDataUrl(getDataUrl(v.getId()));
 			return v;
 		} catch (Throwable e) {
 			response.sendError(404, ERROR_MSG);
@@ -125,19 +127,20 @@ public class VideoSvcCtrl {
 	 * @throws IOException 
 	 */
 	@RequestMapping(value = VIDEO_DATA_PATH, method = RequestMethod.POST) 
-	public @ResponseBody VideoStatus setVideoData(
+	public @ResponseBody VideoStatus addVideoData(
 			@PathVariable(ID_PARAMETER) long id,
-			@RequestBody MultipartFile videoData,
+			final @RequestParam(DATA_PARAMETER) MultipartFile videoData,
 			HttpServletResponse response) 
 					throws IOException {
 
-
+		Video video;
 		try {
-			saveSomeData(videos.get(id), videoData);
-			return new VideoStatus(VideoStatus.VideoState.READY);	
+			video = videos.get(id);
+			saveSomeData(video, videoData);	
 		} catch (Throwable e) {
-			response.sendError(404, "ID not found: " + e );
-			return new VideoStatus(VideoStatus.VideoState.PROCESSING);
+			response.sendError(404, ERROR_MSG);
+		} finally {
+			return new VideoStatus(VideoState.READY);
 		}
 
 
@@ -154,26 +157,18 @@ public class VideoSvcCtrl {
 	 * @throws IOException 
 	 */
 	@RequestMapping(value = VIDEO_DATA_PATH, method = RequestMethod.GET)
-	public @ResponseBody Video getData(
+	public void getData(
 			@PathVariable("id") long id,
 			HttpServletResponse response) throws IOException {
 
-		response.setContentType("video/mpeg");
-		Video mVideo = null;
+		//response.setContentType("video/mpeg");
+		Video video = videos.get(id);
+
 		try {
-			mVideo = videos.get(id);
-
-			if (mVideoFileManager.hasVideoData(mVideo)) {
-				mVideo.setDataUrl(getDataUrl(mVideo.getId()));  // give the video a data URL
-				response.setStatus(response.SC_OK);
-				return mVideo;
-			}
-
+			serveSomeVideo(video, response);
 		} catch (Throwable e) {
 			//throw new FileNotFoundException();
 			response.sendError(404, ERROR_MSG);
-		} finally {
-			return mVideo;
 		}
 
 	}
@@ -212,6 +207,9 @@ public class VideoSvcCtrl {
 	 * @throws IOException 
 	 */
 	public void saveSomeData(Video video, MultipartFile videoData) throws IOException {
+		
+		mVideoFileManager = VideoFileManager.get();
+		
 		mVideoFileManager.saveVideoData(video, videoData.getInputStream());
 	}
 
@@ -223,6 +221,8 @@ public class VideoSvcCtrl {
 	 * @throws IOException 
 	 */
 	public void serveSomeVideo(Video video, HttpServletResponse response) throws IOException {
+		response.setContentType(video.getContentType());
+		mVideoFileManager = VideoFileManager.get();
 		mVideoFileManager.copyVideoData(video, response.getOutputStream());
 	}
 
@@ -231,7 +231,7 @@ public class VideoSvcCtrl {
 	 * Helper method for getting the url of a video based
 	 * on the attainment of an id
 	 */
-	private String getDataUrl(Long videoId) {
+	public String getDataUrl(Long videoId) {
 		String dataUrl = getUrlBaseForLocalServer() + "/video/" + videoId.toString() + "/data";
 		return dataUrl;
 	}
@@ -241,7 +241,7 @@ public class VideoSvcCtrl {
 	 * Helps the helper method for getting the url of a video by
 	 * generating the urlbase for a local server
 	 */
-	private String getUrlBaseForLocalServer() {
+	public String getUrlBaseForLocalServer() {
 		HttpServletRequest request = 
 				((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();
 		String base = 
