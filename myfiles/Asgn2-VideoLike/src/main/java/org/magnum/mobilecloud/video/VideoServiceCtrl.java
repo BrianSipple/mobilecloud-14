@@ -25,6 +25,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 @Controller
@@ -62,28 +63,32 @@ public class VideoServiceCtrl {
 	public static final String PASSWORD_PARAMETER = "password";
 	public static final String DURATION_PARAMETER = "duration";
 	public static final String TITLE_PARAMETER = "title";
-
 	
 	
-	@RequestMapping(value="/oauth/token",method=RequestMethod.POST)
+	@RequestMapping(value=TOKEN_PATH, method=RequestMethod.POST)
 	public @ResponseBody String goodLuck(){
 		return "Good Luck!";
 	}
 	
 	
-	@RequestMapping(value="/video", method=RequestMethod.GET)
+	@RequestMapping(value=VIDEO_SVC_PATH, method=RequestMethod.GET)
 	public @ResponseBody Collection<Video> getVideos(
 			) {
 		
 	}
 	
-	@RequestMapping(value="/video", method=RequestMethod.POST)
+	@RequestMapping(value=VIDEO_SVC_PATH, method=RequestMethod.POST)
 	public @ResponseBody Video addVideo(
 			@RequestBody Video v) {
 		
 	}
 	
-	@RequestMapping(value="/video/{id}")
+	@RequestMapping(value = VIDEO_ID_PATH, method = RequestMethod.GET)
+	public @ResponseBody Video getVideo(
+			@RequestParam(ID_PARAMETER) String id) {
+		
+	}
+	
 	
 	
 	
