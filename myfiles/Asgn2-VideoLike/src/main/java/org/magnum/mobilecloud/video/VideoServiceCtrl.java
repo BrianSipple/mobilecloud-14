@@ -18,9 +18,16 @@
 
 package org.magnum.mobilecloud.video;
 
+import java.io.IOException;
 import java.security.Principal;
 import java.util.Collection;
+import java.util.List;
 
+import javassist.NotFoundException;
+
+import javax.servlet.http.HttpServletResponse;
+
+import org.magnum.mobilecloud.video.auth.User;
 import org.magnum.mobilecloud.video.repository.Video;
 import org.magnum.mobilecloud.video.repository.VideoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -70,6 +77,15 @@ public class VideoServiceCtrl {
 	public static final String DURATION_PARAMETER = "duration";
 	public static final String TITLE_PARAMETER = "title";
 	
+	public static final String VIDEO_404_MSG = "The video could not be found";
+	public static final String ALREADY_LIKED_ERROR_MSG = "Sorry, you can only \"like\" a video once";
+	public static final String NOT_YET_LIKED_ERROR_MSG = "Sorry, you cannont \"UN\"like without \"liking\" first";
+	public static final String VIDEOS_BY_NAME_ERROR_MSG = "No videos were found matching that title";
+	public static final String VIDEOS_BY_DURATION_ERROR_MSG = "No videos were found with a length below that duration";
+
+
+
+	
 	
 	// Wire up the JPA repository interface we created for videos 
 	@Autowired
@@ -112,45 +128,142 @@ public class VideoServiceCtrl {
 	 *    in order for it to be persisted with JPA.
 	 */    
 	@RequestMapping(value=VIDEO_SVC_PATH, method=RequestMethod.POST)
-	public @ResponseBody Video addVideo(
-			@RequestBody Video v) {
+	public @ResponseBody Video uploadVideo(
+			@RequestBody Video v, 
+			Principal p) {
+		
+		v.setName(p.getName());
 		videos.save(v);
 		return v;
 	}
 	
 	
+	/**
+	 * GET /video/{id}
+	 *  - Returns the video with the given id or 404 if the video is not found.
+	 */  
 	@RequestMapping(value = VIDEO_ID_PATH, method = RequestMethod.GET)
 	public @ResponseBody Video getVideo(
-			@RequestParam(ID_PARAMETER) long id) {
+			@RequestParam(ID_PARAMETER) long id,
+			HttpServletResponse response) throws NotFoundException {
 		
-		return videos.findOne(id);
+		Video video = null;
+		
+		try {
+			video = videos.findOne(id);
+		} catch (Throwable throwable) {
+			response.sendError(404, VIDEO_404_MSG);
+		} finally {
+			return video;
+		}
 	}
 	
-	
+	/**
+	 * POST /video/{id}/like
+	 *  - Allows a user to like a video. Returns 200 Ok on success, 404 if the
+	 *    video is not found, or 400 if the user has already liked the video.
+	 *  - The service should should keep track of which users have liked a video and
+	 *    prevent a user from liking a video twice. A POJO Video object is provided for 
+	 *    you and you will need to annotate and/or add to it in order to make it persistable.
+	 *  - A user is only allowed to like a video once. If a user tries to like a video
+	 *     a second time, the operation should fail and return 400 Bad Request.
+	 */     
 	@RequestMapping(value = VIDEO_LIKE_PATH, method = RequestMethod.POST)
-	public boolean addLike(
-			@RequestParam(ID_PARAMETER) String id) {
+	public void addLike(
+			@RequestParam(ID_PARAMETER) long id,
+			Principal p,
+			HttpServletResponse response) throws NotFoundException, IOException {
 		
+		Video video = null;
+		String username = p.getName();
+		
+		try {
+			video = videos.findOne(id);
+			if (video.getUsersThatLiked().contains(username)) {
+				response.sendError(400, ALREADY_LIKED_ERROR_MSG);
+			}
+		} catch (Throwable throwable) {
+			response.sendError(404, VIDEO_404_MSG);
+		} finally {
+			video.addUserThatLiked(username);
+			response.setStatus(200);
+		}
 	}
 	
-	
+	/**
+	 * POST /video/{id}/unlike
+	 *  - Allows a user to unlike a video that he/she previously liked. Returns 200 OK
+	 *     on success, 404 if the video is not found, and a 400 if the user has not 
+	 *     previously liked the specified video.
+	 */     
 	@RequestMapping(value = VIDEO_UNLIKE_PATH, method = RequestMethod.POST)
-	public ... (
-			@RequestParam(ID_PARAMETER) String id) {
+	public void addUnlike(
+			@RequestParam(ID_PARAMETER) long id,
+			Principal p,
+			HttpServletResponse response) throws NotFoundException, IOException {
 		
+		Video video = null;
+		String username = p.getName();
+		
+		try {
+			video = videos.findOne(id);
+			if (!video.getUsersThatLiked().contains(username)) {
+				response.sendError(400, NOT_YET_LIKED_ERROR_MSG);
+			}
+		} catch (Throwable throwable) {
+			response.sendError(404, VIDEO_404_MSG);
+		} finally {
+			video.removeUserThatLiked(username);
+			response.setStatus(200);
+		}
 	}
+		
 	
-	
+	/**
+	 * GET /video/{id}/likedby
+	 * - Returns a list of the string usernames of the users that have liked the specified
+	 *    video. If the video is not found, a 404 error should be generated.
+	 * @throws IOException 
+	 */
+	@SuppressWarnings("finally")
 	@RequestMapping(value = VIDEO_LIKEDBY_PATH, method = RequestMethod.GET)
-	public ...(
-			@RequestParam(ID_PARAMETER) String id) {
+	public List<String> getUsersThatLiked(
+			@PathVariable(ID_PARAMETER) long id,
+			HttpServletResponse response) throws NotFoundException, IOException {
 		
+		Video video = null;
+		List<String> usersThatLiked = null;
+		
+		try {
+			video = videos.findOne(id);
+			usersThatLiked = video.getUsersThatLiked();
+		} catch (Throwable throwable) {
+			response.sendError(404, VIDEO_404_MSG);
+		} finally {
+			return usersThatLiked;
+		}
 	}
 	
 	
+	/**
+	 *	GET /video/search/findByName?title={title}
+   	 *	- Returns a list of videos whose titles match the given parameter or an empty
+     *	  list if none are found.
+     */
 	@RequestMapping(value = VIDEO_TITLE_SEARCH_PATH, method = RequestMethod.GET)
-	public @ResponseBody Video getVideoByTitle() {
+	public @ResponseBody Collection<Video> getVideosByTitle(
+			@PathVariable(TITLE_PARAMETER) String title,
+			HttpServletResponse response) throws IOException {
 		
+		Collection<Video> videosByName = null;
+		
+		try {
+			videosByName = videos.findByName(title);
+		} catch (Throwable throwable) {
+			response.sendError(404, VIDEOS_BY_NAME_ERROR_MSG);
+		} finally {
+			return videosByName;
+		}	
 	}
 	
 	/**
@@ -158,15 +271,21 @@ public class VideoServiceCtrl {
      * 
      * - Returns a list of videos whose durations are less than the given parameter or
      *   an empty list if none are found.
+	 * @throws IOException 
 	 */
 	@RequestMapping(value = VIDEO_DURATION_SEARCH_PATH, method = RequestMethod.GET)
-	public @ResponseBody Video getVideoByDuration(
-			@PathVariable(DURATION_PARAMETER) int duration) {
+	public @ResponseBody Collection<Video> getVideosByMaxDuration(
+			@PathVariable(DURATION_PARAMETER) long maxDuration,
+			HttpServletResponse response) throws IOException {
 		
-	}
-	
-	
-	
-	
-	
+		Collection<Video> videosByMaxDuration = null;
+		
+		try {
+			videosByMaxDuration = videos.findByDurationLessThan(maxDuration);
+		} catch (Throwable throwable) {
+			response.sendError(404, VIDEOS_BY_DURATION_ERROR_MSG);
+		} finally {
+			return videosByMaxDuration;
+		}
+	}	
 }

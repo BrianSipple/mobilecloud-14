@@ -39,19 +39,23 @@ public class Video {
 	
 	private long likes;
 	
+	
+	/**
+	 * A String List of usernames corresponding to users that liked a video
+	 */
 	@ElementCollection(fetch = FetchType.EAGER, targetClass = org.magnum.mobilecloud.video.repository.Video.class)
-	private List<String> usersThatLikedIds;
+	private List<String> usersThatLiked;
 	
 	public Video() {
 	}
 
-	public Video(String name, String url, long duration, long likes, List<String> usersThatLikedIds) {
+	public Video(String name, String url, long duration, long likes, List<String> usersThatLiked) {
 		super();
 		this.name = name;
 		this.url = url;
 		this.duration = duration;
 		this.likes = likes;
-		this.usersThatLikedIds = usersThatLikedIds;
+		this.usersThatLiked = usersThatLiked;
 	}
 
 	public String getName() {
@@ -94,19 +98,21 @@ public class Video {
 		this.likes = likes;
 	}
 	
-	public void addUserThatLikedId(String id) {
-		this.usersThatLikedIds.add(id);
+	public void addUserThatLiked(String username) {
+		this.usersThatLiked.add(username);
+		this.likes += 1;
 	}
 	
-	public void removeUserThatLikedId(String id) {
-		if (this.usersThatLikedIds.indexOf(id) != -1) {
-			this.usersThatLikedIds.remove(this.usersThatLikedIds.indexOf(id));
+	public void removeUserThatLiked(String username) {
+		if (this.usersThatLiked.indexOf(id) != -1) {
+			this.usersThatLiked.remove(this.usersThatLiked.indexOf(username));
+			this.likes -= 1;
 		}
 		
 	}
 	
-	public List<String> getUsersThatLikedIds() {
-		return usersThatLikedIds;
+	public List<String> getUsersThatLiked() {
+		return usersThatLiked;
 	}
 	
 	/**
