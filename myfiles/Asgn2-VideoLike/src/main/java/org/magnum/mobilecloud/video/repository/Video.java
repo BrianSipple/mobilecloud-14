@@ -1,4 +1,4 @@
-package org.magnum.mobilecloud.video.repository;
+	package org.magnum.mobilecloud.video.repository;
 
 import java.util.List;
 
@@ -96,6 +96,13 @@ public class Video {
 	
 	public void addUserThatLikedId(String id) {
 		this.usersThatLikedIds.add(id);
+	}
+	
+	public void removeUserThatLikedId(String id) {
+		if (this.usersThatLikedIds.indexOf(id) != -1) {
+			this.usersThatLikedIds.remove(this.usersThatLikedIds.indexOf(id));
+		}
+		
 	}
 	
 	public List<String> getUsersThatLikedIds() {

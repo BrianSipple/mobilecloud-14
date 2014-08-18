@@ -2,9 +2,11 @@ package org.magnum.mobilecloud.video.auth;
 
 import java.io.File;
 import java.util.Arrays;
+import java.util.Properties;
 
 import org.apache.catalina.connector.Connector;
 import org.apache.coyote.http11.Http11NioProtocol;
+import org.magnum.mobilecloud.video.VideoServiceCtrl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.embedded.ConfigurableEmbeddedServletContainer;
@@ -31,8 +33,6 @@ import org.springframework.security.oauth2.config.annotation.web.configuration.R
 import org.springframework.security.oauth2.config.annotation.web.configurers.AuthorizationServerEndpointsConfigurer;
 import org.springframework.security.oauth2.provider.ClientDetailsService;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
-
-import org.magnum.mobilecloud.video.VideoServiceCtrl;
 
 /**
  *	Configure this web application to use OAuth 2.0.
@@ -192,7 +192,7 @@ public class OAuth2SecurityConfiguration {
 					.authorities("ROLE_CLIENT")
 					.scopes("read").resourceIds("video")
 					.accessTokenValiditySeconds(3600).and().build();
-
+			/*
 			// Create a series of hard-coded users. 
 			UserDetailsService svc = new InMemoryUserDetailsManager(
 					Arrays.asList(
@@ -203,6 +203,12 @@ public class OAuth2SecurityConfiguration {
 							User.create("user3", "pass", "USER"),
 							User.create("user4", "pass", "USER"),
 							User.create("user5", "pass", "USER")));
+			*/
+			UserDetailsService svc = new InMemoryUserDetailsManager(
+					(Properties) Arrays.asList(
+							UserDetailsModel.USER0,
+							UserDetailsModel.ADMIN
+			));
 
 			// Since clients have to use BASIC authentication with the client's id/secret,
 			// when sending a request for a password grant, we make each client a user
