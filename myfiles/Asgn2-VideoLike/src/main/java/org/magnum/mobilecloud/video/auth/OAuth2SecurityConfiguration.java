@@ -2,11 +2,11 @@ package org.magnum.mobilecloud.video.auth;
 
 import java.io.File;
 import java.util.Arrays;
-import java.util.Properties;
 
 import org.apache.catalina.connector.Connector;
 import org.apache.coyote.http11.Http11NioProtocol;
 import org.magnum.mobilecloud.video.VideoServiceCtrl;
+import org.magnum.mobilecloud.video.client.VideoSvcApi;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.embedded.ConfigurableEmbeddedServletContainer;
@@ -112,27 +112,27 @@ public class OAuth2SecurityConfiguration {
 			
 			// Rough-draft changes
 			http.authorizeRequests()
-				.antMatchers(HttpMethod.GET, VideoServiceCtrl.VIDEO_SVC_PATH)
+				.antMatchers(HttpMethod.GET, VideoSvcApi.VIDEO_SVC_PATH)
 				.access("#oauth2.hasScope('read')");
 			
 			http.authorizeRequests()
-			.antMatchers(HttpMethod.POST, VideoServiceCtrl.VIDEO_SVC_PATH)
+			.antMatchers(HttpMethod.POST, VideoSvcApi.VIDEO_SVC_PATH)
 			.access("#oauth2.hasScope('write')");
 			
 			http.authorizeRequests()
-			.antMatchers(HttpMethod.GET, VideoServiceCtrl.VIDEO_ID_PATH)
+			.antMatchers(HttpMethod.GET, VideoSvcApi.VIDEO_SVC_PATH + "/{id}")
 			.access("#oauth2.hasScope('read')");
 			
 			http.authorizeRequests()
-			.antMatchers(HttpMethod.POST, VideoServiceCtrl.VIDEO_LIKE_PATH)
+			.antMatchers(HttpMethod.POST, VideoSvcApi.VIDEO_SVC_PATH + "/{id}/like")
 			.access("#oauth2.hasScope('write')");
 			
 			http.authorizeRequests()
-			.antMatchers(HttpMethod.GET, VideoServiceCtrl.VIDEO_UNLIKE_PATH)
+			.antMatchers(HttpMethod.GET, VideoSvcApi.VIDEO_SVC_PATH + "/{id}/unlike")
 			.access("#oauth2.hasScope('write')");
 			
 			http.authorizeRequests()
-			.antMatchers(HttpMethod.GET, VideoServiceCtrl.VIDEO_LIKEDBY_PATH)
+			.antMatchers(HttpMethod.GET, VideoSvcApi.VIDEO_SVC_PATH + "/{id}/likedBy")
 			.access("#oauth2.hasScope('read')");
 			
 			http.authorizeRequests()

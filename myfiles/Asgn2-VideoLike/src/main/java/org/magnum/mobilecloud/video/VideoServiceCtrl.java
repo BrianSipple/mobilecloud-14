@@ -236,21 +236,19 @@ public class VideoServiceCtrl {
 	 */
 	@SuppressWarnings("finally")
 	@RequestMapping(value = VideoSvcApi.VIDEO_SVC_PATH + "/{id}/likedby", method = RequestMethod.GET)
+	@ResponseStatus(HttpStatus.OK)
 	public Set<String> getUsersThatLiked(
 			@PathVariable("id") long id,
 			HttpServletResponse response) throws NotFoundException, IOException {
 	
-		Video video = null;
-		Set<String> usersThatLiked = null;
-	
-		try {
-			video = videos.findOne(id);
-			usersThatLiked = video.getUsersThatLiked();
-		} catch (Throwable throwable) {
+		if (!videos.exists(id)) {
 			response.sendError(404, VIDEO_404_MSG);
-		} finally {
-			return usersThatLiked;
 		}
+		
+		mVideo = videos.findOne(id);
+		Set<String> usersThatLiked = mVideo.getUsersThatLiked();
+	
+		return usersThatLiked;
 	}
 	
 	
@@ -264,15 +262,7 @@ public class VideoServiceCtrl {
 			@PathVariable(TITLE_PARAMETER) String title,
 			HttpServletResponse response) throws IOException {
 	
-		Collection<Video> videosByName = null;
-	
-		try {
-			videosByName = videos.findByName(title);
-		} catch (Throwable throwable) {
-			response.sendError(404, VIDEOS_BY_NAME_ERROR_MSG);
-		} finally {
-			return videosByName;
-		}	
+		return videos.findByName(title);
 	}
 	
 	/**
@@ -287,15 +277,7 @@ public class VideoServiceCtrl {
 			@PathVariable(DURATION_PARAMETER) long maxDuration,
 			HttpServletResponse response) throws IOException {
 	
-		Collection<Video> videosByMaxDuration = null;
-	
-		try {
-			videosByMaxDuration = videos.findByDurationLessThan(maxDuration);
-		} catch (Throwable throwable) {
-			response.sendError(404, VIDEOS_BY_DURATION_ERROR_MSG);
-		} finally {
-			return videosByMaxDuration;
-		}
+		return videos.findByDurationLessThan(maxDuration);
 	}
 
 
@@ -322,7 +304,7 @@ public class VideoServiceCtrl {
 	 * by inserting its id into the path
 	 */
 	private String getDataUrl(long videoId) {
-		String url = getUrlBaseForLocalServer() + "/video/" + id + "/data";
+		String url = getUrlBaseForLocalServer() + "/video/" + videoId + "/data";
 		return url;
 	}
 }
