@@ -1,6 +1,7 @@
 	package org.magnum.mobilecloud.video.repository;
 
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 import javax.persistence.ElementCollection;
 import javax.persistence.Entity;
@@ -44,12 +45,12 @@ public class Video {
 	 * A String List of usernames corresponding to users that liked a video
 	 */
 	@ElementCollection(fetch = FetchType.EAGER, targetClass = org.magnum.mobilecloud.video.repository.Video.class)
-	private List<String> usersThatLiked;
+	private Set<String> usersThatLiked = new HashSet<String>();
 	
 	public Video() {
 	}
 
-	public Video(String name, String url, long duration, long likes, List<String> usersThatLiked) {
+	public Video(String name, String url, long duration, long likes, Set<String> usersThatLiked) {
 		super();
 		this.name = name;
 		this.url = url;
@@ -98,22 +99,28 @@ public class Video {
 		this.likes = likes;
 	}
 	
-	public void addUserThatLiked(String username) {
-		this.usersThatLiked.add(username);
-		this.likes += 1;
-	}
 	
-	public void removeUserThatLiked(String username) {
-		if (this.usersThatLiked.indexOf(id) != -1) {
-			this.usersThatLiked.remove(this.usersThatLiked.indexOf(username));
-			this.likes -= 1;
-		}
-		
-	}
-	
-	public List<String> getUsersThatLiked() {
+	public Set<String> getUsersThatLiked() {
 		return usersThatLiked;
 	}
+	
+	public void setUsersThatLiked(Set<String> usernames) {
+		this.usersThatLiked = usernames;
+	}
+	
+	// More-granular add/remove methods for the usersThatLiked set
+	public void addUserThatLiked(String username) {
+		this.usersThatLiked.add(username);
+	}
+
+	
+	public void removeUserThatLiked(String username) {
+		if (this.usersThatLiked.contains(username)) {
+			this.usersThatLiked.remove(username);
+			this.likes -= 1;
+		}
+	}
+
 	
 	/**
 	 * Two Videos will generate the same hashcode if they have exactly the same

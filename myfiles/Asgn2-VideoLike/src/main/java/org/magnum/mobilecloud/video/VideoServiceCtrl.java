@@ -21,13 +21,13 @@ package org.magnum.mobilecloud.video;
 import java.io.IOException;
 import java.security.Principal;
 import java.util.Collection;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 import javassist.NotFoundException;
 
 import javax.servlet.http.HttpServletResponse;
 
-import org.magnum.mobilecloud.video.auth.User;
 import org.magnum.mobilecloud.video.repository.Video;
 import org.magnum.mobilecloud.video.repository.VideoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -128,7 +128,7 @@ public class VideoServiceCtrl {
 	 *    in order for it to be persisted with JPA.
 	 */    
 	@RequestMapping(value=VIDEO_SVC_PATH, method=RequestMethod.POST)
-	public @ResponseBody Video uploadVideo(
+	public @ResponseBody Video addVideo(
 			@RequestBody Video v, 
 			Principal p) {
 		
@@ -176,17 +176,20 @@ public class VideoServiceCtrl {
 		
 		Video video = null;
 		String username = p.getName();
+		Set<String> usersThatLiked = new HashSet<String>();
 		
 		try {
 			video = videos.findOne(id);
+			usersThatLiked = video.getUsersThatLiked();
 			if (video.getUsersThatLiked().contains(username)) {
 				response.sendError(400, ALREADY_LIKED_ERROR_MSG);
-			}
+			} 
+			
+			usersThatLiked.add(username);
+			video.setUsersThatLiked(usersThatLiked);
+			
 		} catch (Throwable throwable) {
 			response.sendError(404, VIDEO_404_MSG);
-		} finally {
-			video.addUserThatLiked(username);
-			response.setStatus(200);
 		}
 	}
 	
@@ -209,13 +212,11 @@ public class VideoServiceCtrl {
 			video = videos.findOne(id);
 			if (!video.getUsersThatLiked().contains(username)) {
 				response.sendError(400, NOT_YET_LIKED_ERROR_MSG);
+				video.removeUserThatLiked(username);
 			}
 		} catch (Throwable throwable) {
 			response.sendError(404, VIDEO_404_MSG);
-		} finally {
-			video.removeUserThatLiked(username);
-			response.setStatus(200);
-		}
+		} 
 	}
 		
 	
@@ -227,12 +228,12 @@ public class VideoServiceCtrl {
 	 */
 	@SuppressWarnings("finally")
 	@RequestMapping(value = VIDEO_LIKEDBY_PATH, method = RequestMethod.GET)
-	public List<String> getUsersThatLiked(
+	public Set<String> getUsersThatLiked(
 			@PathVariable(ID_PARAMETER) long id,
 			HttpServletResponse response) throws NotFoundException, IOException {
 		
 		Video video = null;
-		List<String> usersThatLiked = null;
+		Set<String> usersThatLiked = null;
 		
 		try {
 			video = videos.findOne(id);

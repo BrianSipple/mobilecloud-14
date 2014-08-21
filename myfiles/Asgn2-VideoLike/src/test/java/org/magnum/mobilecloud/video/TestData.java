@@ -1,5 +1,7 @@
 package org.magnum.mobilecloud.video;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 import org.magnum.mobilecloud.video.repository.Video;
@@ -34,7 +36,11 @@ public class TestData {
 		String title = "Video-"+id;
 		String url = "http://coursera.org/some/video-"+id;
 		long duration = 60 * (int)Math.rint(Math.random() * 60) * 1000; // random time up to 1hr
-		return new Video(title, url, duration, 0);
+		Set<String> usersThatLiked = new HashSet<String>();
+		usersThatLiked.add("user0");
+		usersThatLiked.add("user1");
+		usersThatLiked.add("user2");
+		return new Video(title, url, duration, 0, usersThatLiked);
 	}
 	
 	/**
