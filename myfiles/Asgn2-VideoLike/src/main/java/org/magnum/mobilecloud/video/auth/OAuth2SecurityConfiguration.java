@@ -110,34 +110,6 @@ public class OAuth2SecurityConfiguration {
 				.antMatchers("/**")
 				.access("#oauth2.hasScope('write')");
 			
-			// Rough-draft changes
-			http.authorizeRequests()
-				.antMatchers(HttpMethod.GET, VideoSvcApi.VIDEO_SVC_PATH)
-				.access("#oauth2.hasScope('read')");
-			
-			http.authorizeRequests()
-			.antMatchers(HttpMethod.POST, VideoSvcApi.VIDEO_SVC_PATH)
-			.access("#oauth2.hasScope('write')");
-			
-			http.authorizeRequests()
-			.antMatchers(HttpMethod.GET, VideoSvcApi.VIDEO_SVC_PATH + "/{id}")
-			.access("#oauth2.hasScope('read')");
-			
-			http.authorizeRequests()
-			.antMatchers(HttpMethod.POST, VideoSvcApi.VIDEO_SVC_PATH + "/{id}/like")
-			.access("#oauth2.hasScope('write')");
-			
-			http.authorizeRequests()
-			.antMatchers(HttpMethod.GET, VideoSvcApi.VIDEO_SVC_PATH + "/{id}/unlike")
-			.access("#oauth2.hasScope('write')");
-			
-			http.authorizeRequests()
-			.antMatchers(HttpMethod.GET, VideoSvcApi.VIDEO_SVC_PATH + "/{id}/likedBy")
-			.access("#oauth2.hasScope('read')");
-			
-			http.authorizeRequests()
-			.antMatchers(HttpMethod.GET, "/video/search/**")
-			.access("#oauth2.hasScope('read')");
 		}
 
 	}
@@ -192,7 +164,7 @@ public class OAuth2SecurityConfiguration {
 					.authorities("ROLE_CLIENT")
 					.scopes("read").resourceIds("video")
 					.accessTokenValiditySeconds(3600).and().build();
-			/*
+			
 			// Create a series of hard-coded users. 
 			UserDetailsService svc = new InMemoryUserDetailsManager(
 					Arrays.asList(
@@ -202,13 +174,10 @@ public class OAuth2SecurityConfiguration {
 							User.create("user2", "pass", "USER"),
 							User.create("user3", "pass", "USER"),
 							User.create("user4", "pass", "USER"),
-							User.create("user5", "pass", "USER")));
-			*/
-			UserDetailsService svc = new InMemoryUserDetailsManager(
-					Arrays.asList(
-							User.create("admin", "pass", "USER", "ADMIN"),
-							User.create("user0", "pass", "USER")
-			));
+							User.create("user5", "pass", "USER")
+					)
+			);
+
 
 			// Since clients have to use BASIC authentication with the client's id/secret,
 			// when sending a request for a password grant, we make each client a user
